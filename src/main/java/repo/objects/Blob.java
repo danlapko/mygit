@@ -1,6 +1,8 @@
 package repo.objects;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import repo.Repo;
+import repo.Utils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -8,31 +10,30 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import org.apache.commons.codec.digest.DigestUtils;
-
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class Blob extends GitObject {
     private final String content;
 
-    public Blob(Repo repo, String sha) throws IOException {
-        super(repo, sha);
+    public Blob(Repo repo, String shaFromObjects) throws IOException {
+        super(repo, shaFromObjects);
 
-        Path blobObjectPath = repo.objectsDir.resolve(sha);
+        Path blobObjectPath = repo.objectsDir.resolve(shaFromObjects);
         if (!Files.exists(blobObjectPath)) {
             throw new IOException(" Blob object does not exists " + blobObjectPath.toString());
         }
-        content = new String(Files.readAllBytes(blobObjectPath), StandardCharsets.UTF_8);
+        content = Utils.readFileContent(blobObjectPath);
     }
 
-    public Blob(Repo repo, Path path) throws IOException, NoSuchAlgorithmException {
+    public Blob(Repo repo, Path relativeFilePath) throws IOException {
         super(repo, "");
-        content = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+        Path absoluteFilePath = repo.trackingDir.resolve(relativeFilePath);
+
+        content = Utils.readFileContent(absoluteFilePath);
         sha = DigestUtils.sha256Hex(content);
 
 //        store
         Path blobObjectPath = repo.objectsDir.resolve(sha);
-        Files.write(blobObjectPath, Arrays.asList(repr().split("\n")));
+        Utils.writeContent(blobObjectPath, repr());
     }
 
     @Override

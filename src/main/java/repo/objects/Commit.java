@@ -2,9 +2,9 @@ package repo.objects;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import repo.Repo;
+import repo.Utils;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -16,15 +16,16 @@ public class Commit extends GitObject {
     private final Set<Commit> parents;
     private final String message;
 
-    public Commit(Repo repo, String sha) throws Exception {
-        super(repo, sha);
+    //  create from existing Commit from objects dir
+    public Commit(Repo repo, String commitSha) throws Exception {
+        super(repo, commitSha);
 
-        Path commitObjectPath = repo.objectsDir.resolve(sha);
+        Path commitObjectPath = repo.objectsDir.resolve(commitSha);
         if (!Files.exists(commitObjectPath)) {
             throw new IOException(" Commit object does not exists " + commitObjectPath.toString());
 
         }
-        List<String> lines = Files.readAllLines(commitObjectPath, StandardCharsets.UTF_8);
+        List<String> lines = Utils.readFileContentList(commitObjectPath);
         tree = new Tree(repo, lines.get(0).split(" ")[1]);
         date = lines.get(1).split(" ")[1];
 
@@ -45,29 +46,48 @@ public class Commit extends GitObject {
 
     }
 
-    public Commit(Repo repo, String tree, Set<String> parents, String message) throws Exception {
+    //  create absolutely new commit
+    public Commit(Repo repo, String treeSha, Set<String> parentsShas, String message) throws Exception {
         super(repo, "");
-        this.tree = new Tree(repo, tree);
-        this.date = (new Date()).toString();
+        tree = new Tree(repo, treeSha);
+        date = (new Date()).toString();
         Set<Commit> parents_ = new HashSet<>();
 
-        if (parents != null) {
-            for (String parent : parents) {
-                parents_.add(new Commit(repo, parent));
+        if (parentsShas != null) {
+            for (String parentSha : parentsShas) {
+                parents_.add(new Commit(repo, parentSha));
             }
         }
-        this.parents = parents_;
+
+        parents = parents_;
         this.message = message;
 
         sha = DigestUtils.sha256Hex(repr());
 
 //        store
         Path commitObjectPath = repo.objectsDir.resolve(sha);
-        Files.write(commitObjectPath, Arrays.asList(repr().split("\n")));
+        Utils.writeContent(commitObjectPath, repr());
     }
 
+    public Tree getTree() {
+        return tree;
+    }
+
+    public String getDate() {
+        return date;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public Set<Commit> getParents() {
+        return parents;
+    }
+
+
     @Override
-    public String repr() throws Exception {
+    public String repr() {
         StringBuilder s = new StringBuilder();
         s.append("tree ").append(tree.sha).append("\n");
         s.append("date ").append(date).append("\n");
@@ -75,6 +95,7 @@ public class Commit extends GitObject {
         for (Commit parent : parents) {
             s.append("parent ").append(parent.sha).append("\n");
         }
+
         s.append("\n");
         s.append(message);
 

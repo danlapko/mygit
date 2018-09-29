@@ -1,5 +1,4 @@
-import commands.GitCommand;
-import commands.Init;
+import commands.*;
 import io.airlift.airline.Cli;
 import io.airlift.airline.ParseException;
 import repo.Repo;
@@ -12,9 +11,12 @@ public class MyGit {
     public static void main(String[] args) throws IOException {
         @SuppressWarnings("unchecked")
         Cli.CliBuilder<GitCommand> builder = Cli.<GitCommand>builder("mygit")
-                .withDescription("Dead simple VCS")
+                .withDescription("Simple git")
                 .withCommands(
-                        Init.class
+                        Init.class,
+                        Add.class,
+                        Rm.class,
+                        Status.class
                 );
         Cli<GitCommand> parser = builder.build();
 
@@ -35,7 +37,7 @@ public class MyGit {
         // in case repository not found and command is not useful without it
         // print error
         if (!repo.load() && !(cmd instanceof Init)) {
-            System.err.println("FATAL: can't find wit repository near " + workingDir);
+            System.err.println("FATAL: can't find mygit repository near " + workingDir);
             return;
         }
 
@@ -43,7 +45,7 @@ public class MyGit {
         try {
             cmd.execute(repo, workingDir);
         } catch (IOException e) {
-            System.err.println("FATAL: Repository write/read failed!"+e.getMessage());
+            System.err.println("FATAL: Repository write/read failed!" + e.getMessage());
             e.printStackTrace();
         } catch (Exception e) {
             System.err.println("FATAL: I don't know what have happened");

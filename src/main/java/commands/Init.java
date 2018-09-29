@@ -11,7 +11,7 @@ public class Init implements GitCommand {
 
     @Override
     public int execute(Repo repo, Path workingDir) throws Exception {
-        repo.initialize();
+        repo.init();
         return 0;
     }
 }

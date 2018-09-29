@@ -11,31 +11,31 @@ public class Branch {
     private final String name;
     private final String commitSha;
 
-    public Branch(Repo repo, String name) throws IOException {
+    //  load branch from file
+    Branch(Repo repo, String branchName) throws IOException {
         this.repo = repo;
-        this.name = name;
+        this.name = branchName;
 
-        Path path = this.repo.branchesDir.resolve(this.name);
-        if (!Files.exists(path)) {
-            commitSha = repo.head.getCommitSha();
+        Path absoluteBranchFilePath = this.repo.branchesDir.resolve(this.name);
+        if (Files.exists(absoluteBranchFilePath)) {
+            commitSha = Utils.readFileContentList(absoluteBranchFilePath).get(0);
         } else {
-            commitSha = Files.readAllLines(path, StandardCharsets.UTF_8).get(0);
+            throw new IOException("branch " + branchName + " does not exist!");
         }
     }
 
-    public Branch(Repo repo, String name, String commitSha) throws Exception {
+    //  create absolutely new branch
+    Branch(Repo repo, String branchName, String commitSha) throws Exception {
         this.repo = repo;
-        this.name = name;
+        this.name = branchName;
         this.commitSha = commitSha;
 
-        Path path = this.repo.branchesDir.resolve(this.name);
-        if (!Files.exists(path)) {
-            Files.createFile(path);
-            Files.write(path, Arrays.asList(commitSha.split("\n")));
+        Path absoluteBranchFilePath = this.repo.branchesDir.resolve(this.name);
+        if (Files.exists(absoluteBranchFilePath)) {
+            throw new IOException("branch " + branchName + " already exists!");
         } else {
-            String currentCommitSha = Files.readAllLines(path, StandardCharsets.UTF_8).get(0);
-            if (this.commitSha!= currentCommitSha)
-                throw new Exception(); // branch already exists and branch head differs from commitSha
+            Files.createFile(absoluteBranchFilePath);
+            Utils.writeContent(absoluteBranchFilePath, commitSha);
         }
     }
 
