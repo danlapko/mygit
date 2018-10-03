@@ -114,37 +114,28 @@ public class Repo {
         return result;
     }
 
-    public STATUS getFileStatus(Path relativeFilePath) {
-        Path absoluteFilePath = trackingDir.resolve(relativeFilePath);
-        // TODO
-        return null;
-    }
+//    public STATUS getFileStatus(Path relativeFilePath) throws Exception {
+//        Path absoluteFilePath = trackingDir.resolve(relativeFilePath);
+//
+//        Map<String, Blob> headFiles = head.getFiles(); // relativeFileName -> Blob
+//        Map<String, Blob> indexedFiles = index.getRecords(); // relativeFileName -> Blob
+//        Map<String, String> workdirFiles = getWorkdirPathsShas(); // relativeFilePath -> Sha
+//
+//
+//        STATUS status = null;
+//        WORKDIR_INDEX_STATUS workdirIndexStatus = null;
+//        INDEX_HEAD_STATUS indexHeadStatus = null;
+//
+//        return null;
+//    }
 
     // relativeFileName -> STATUS
     public Map<String, STATUS> getFilesStatuses() throws Exception {
-        Map<String, Blob> headFiles; // relativeFileName -> Blob
-        Map<String, Blob> indexedFiles; // relativeFileName -> Blob
-        Map<String, String> workdirFiles; // relativeFilePath -> Sha
+        Map<String, Blob> headFiles = head.getFiles(); // relativeFileName -> Blob
+        Map<String, Blob> indexedFiles = index.getRecords(); // relativeFileName -> Blob
+        Map<String, String> workdirFiles = getWorkdirPathsShas(); // relativeFilePath -> Sha
 
         Map<String, STATUS> result = new HashMap<>();
-
-        // assign headFiles
-        String headCommitSha = head.getCommitSha();
-        // there are no any commits at head
-        if (headCommitSha.equals("empty_sha")) {
-            headFiles = new HashMap<>();
-        } else {
-            Commit headCommit = new Commit(this, headCommitSha);
-            Tree headTree = headCommit.getTree();
-            headFiles = headTree.getAllSubBlobs();
-        }
-
-        // assign indexedFiles
-        indexedFiles = index.getRecords();
-
-        //assign workdirFiles
-        workdirFiles = getWorkdirPathsShas();
-
         Set<String> resultKeys = new HashSet<>();
 
         resultKeys.addAll(headFiles.keySet());
@@ -157,58 +148,13 @@ public class Repo {
             WORKDIR_INDEX_STATUS workdirIndexStatus = null;
             INDEX_HEAD_STATUS indexHeadStatus = null;
 
-
             // assign workdirIndexStatus
-            if (workdirFiles.containsKey(relativeFileName) && // (in workdir) and (not in index)
-                    !indexedFiles.containsKey(relativeFileName)) {
-                workdirIndexStatus = WORKDIR_INDEX_STATUS.UNTRACKED;
-
-            } else if (workdirFiles.containsKey(relativeFileName) &&  // (in workdir) and (in index) and (contentSha == indexSha)
-                    indexedFiles.containsKey(relativeFileName) &&
-                    workdirFiles.get(relativeFileName).equals(indexedFiles.get(relativeFileName).sha)) {
-                workdirIndexStatus = WORKDIR_INDEX_STATUS.UNCHANGED;
-
-            } else if (workdirFiles.containsKey(relativeFileName) &&  // (in workdir) and (in index) and (contentSha != indexSha)
-                    indexedFiles.containsKey(relativeFileName) &&
-                    !workdirFiles.get(relativeFileName).equals(indexedFiles.get(relativeFileName).sha)) {
-                workdirIndexStatus = WORKDIR_INDEX_STATUS.MODIFIED;
-
-            } else if (!workdirFiles.containsKey(relativeFileName) && // (not in workdir) and (in index)
-                    indexedFiles.containsKey(relativeFileName)) {
-                workdirIndexStatus = WORKDIR_INDEX_STATUS.DELETED;
-
-            } else {
-                throw new Exception("impossible WORKDIR_INDEX_STATUS");
-            }
+            workdirIndexStatus = WORKDIR_INDEX_STATUS.getFileStatus(relativeFileName, workdirFiles, indexedFiles);
 
 //            System.out.println(relativeFileName + " " + workdirFiles.containsKey(relativeFileName) + " " + indexedFiles.containsKey(relativeFileName));
 
             // assign indexHeadStatus
-            if (indexedFiles.containsKey(relativeFileName) && // (in index) and (not in head)
-                    !headFiles.containsKey(relativeFileName)) {
-                indexHeadStatus = INDEX_HEAD_STATUS.NEWFILE;
-
-            } else if (!indexedFiles.containsKey(relativeFileName) && // (not in index) and (not in head)
-                    !headFiles.containsKey(relativeFileName)) {
-                indexHeadStatus = INDEX_HEAD_STATUS.UNCHANGED;
-
-            } else if (indexedFiles.containsKey(relativeFileName) && // (in index) and (in head) and (indexSha == headSha)
-                    headFiles.containsKey(relativeFileName) &&
-                    indexedFiles.get(relativeFileName).sha.equals(headFiles.get(relativeFileName).sha)) {
-                indexHeadStatus = INDEX_HEAD_STATUS.UNCHANGED;
-
-            } else if (indexedFiles.containsKey(relativeFileName) && // (in index) and (in head) and (indexSha != headSha)
-                    headFiles.containsKey(relativeFileName) &&
-                    !indexedFiles.get(relativeFileName).sha.equals(headFiles.get(relativeFileName).sha)) {
-                indexHeadStatus = INDEX_HEAD_STATUS.MODIFIED;
-
-            } else if (!indexedFiles.containsKey(relativeFileName) && // (not in index) and (in head)
-                    headFiles.containsKey(relativeFileName)) {
-                indexHeadStatus = INDEX_HEAD_STATUS.DELETED;
-
-            } else {
-                throw new Exception("impossible INDEX_HEAD_STATUS");
-            }
+            indexHeadStatus = INDEX_HEAD_STATUS.getFileStatus(relativeFileName, headFiles, indexedFiles);
 
             status = new STATUS(workdirIndexStatus, indexHeadStatus);
             result.put(relativeFileName, status);
@@ -216,28 +162,7 @@ public class Repo {
         return result;
     }
 
-/*
-    private Tree buildFullTree(Path path) throws Exception {
-        HashMap<String, String> blobs = new HashMap<>(); // name -> sha
-        HashMap<String, String> trees = new HashMap<>(); // name -> sha
 
-        for (File file : path.toFile().listFiles()) {
-            if (file.isFile()) {
-                System.out.println("building blob " + file.toString());
-                Blob blob = new Blob(this, file.toPath());
-                blobs.put(file.getName(), blob.sha);
-            } else if (file.isDirectory()) {
-                Tree tree = buildFullTree(file.toPath());
-                trees.put(file.getName(), tree.sha);
-            }
-        }
-        System.out.println("building tree " + path.toString() + " " + blobs.size() + " " + trees.size());
-        Tree result_tree = new Tree(this, blobs, trees);
-//        System.out.println("\trepr:"+result_tree.repr().split("\n").length);
-        return result_tree;
-    }
-
-*/
     /*
     private Tree buildSingleFile(Path path) throws Exception {
         HashMap<String, String> blobs = new HashMap<>(); // name -> sha

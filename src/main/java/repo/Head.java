@@ -55,7 +55,7 @@ public class Head {
         String headCommitSha = getCommitSha();
 
         if (headCommitSha.equals("empty_sha")) {
-            headFiles = new HashMap<String, Blob>();
+            headFiles = new HashMap<>();
         } else {
             Commit headCommit = new Commit(repo, headCommitSha);
             Tree headTree = headCommit.getTree();

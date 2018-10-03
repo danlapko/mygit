@@ -10,6 +10,12 @@ abstract class GitObject {
     final Repo repo;
     public String sha;
 
+    //  create absolutely new object without storing (don't forget to store after sha calculated)
+    GitObject(Repo repo){
+        this.repo = repo;
+        sha = "";
+    }
+
     //  create from existing object in objects dir
     GitObject(Repo repo, String objectSha) throws IOException {
         this.repo = repo;

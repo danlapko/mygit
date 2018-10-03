@@ -4,15 +4,10 @@ import org.apache.commons.codec.digest.DigestUtils;
 import repo.Repo;
 import repo.Utils;
 
-import javax.rmi.CORBA.Util;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class Tree extends GitObject {
     private final Map<String, Blob> blobs; // relativeFileName -> Blob
@@ -23,8 +18,8 @@ public class Tree extends GitObject {
         super(repo, objectSha);
 
         // reconstruct from object file
-        Map<String, Blob> blobs_ = new HashMap<>();
-        Map<String, Tree> trees_ = new HashMap<>();
+        blobs = new HashMap<>();
+        trees = new HashMap<>();
         Path treeObjectPath = repo.objectsDir.resolve(objectSha);
         if (!Files.exists(treeObjectPath)) {
             throw new IOException(" Tree object does not exists " + treeObjectPath.toString());
@@ -38,10 +33,10 @@ public class Tree extends GitObject {
             String lineRelativeFileName = lineList[2];
             switch (type) {
                 case "blob":
-                    blobs_.put(lineRelativeFileName, new Blob(repo, lineSha));
+                    blobs.put(lineRelativeFileName, new Blob(repo, lineSha));
                     break;
                 case "tree":
-                    trees_.put(lineRelativeFileName, new Tree(repo, lineSha));
+                    trees.put(lineRelativeFileName, new Tree(repo, lineSha));
                     break;
                 default:
                     throw new Exception();
@@ -49,43 +44,119 @@ public class Tree extends GitObject {
 
         }
         // end of reconstruct
-
-        blobs = blobs_;
-        trees = trees_;
     }
 
+
+    //  create absolutely new tree
+    public Tree(Repo repo) throws IOException {
+        super(repo);
+        blobs = new HashMap<>();
+        trees = new HashMap<>();
+        store(); // TODO ?
+
+    }
 
     //  create absolutely new tree
     // blobs: relativeFileName -> blobSha
     // trees: relativeFileName -> treeSha
     public Tree(Repo repo, Map<String, String> blobs, Map<String, String> trees) throws Exception {
-        super(repo, "");
+        super(repo);
 
-        Map<String, Blob> blobs_ = new HashMap<>(); // relativeFileName -> Blob
-        Map<String, Tree> trees_ = new HashMap<>(); // relativeFileName -> Tree
+        this.blobs = new HashMap<>(); // relativeFileName -> Blob
+        this.trees = new HashMap<>(); // relativeFileName -> Tree
 
         for (Map.Entry<String, String> entry : blobs.entrySet()) {
             Blob blob = new Blob(repo, entry.getValue());
-            blobs_.put(entry.getKey(), blob);
+            this.blobs.put(entry.getKey(), blob);
         }
 
         for (Map.Entry<String, String> entry : trees.entrySet()) {
             Tree tree = new Tree(repo, entry.getValue());
-            trees_.put(entry.getKey(), tree);
+            this.trees.put(entry.getKey(), tree);
         }
 
-        this.blobs = blobs_;
-        this.trees = trees_;
+        store();
+    }
 
+
+    public void addPath(Queue<String> nameComponents, Blob blob) throws Exception {
+        String nextComponent = nameComponents.peek(); // TODO: is it correct?
+        if (nameComponents.size() == 1) { // if it is last component in path
+            blobs.put(nextComponent, blob);
+        } else {
+            if (trees.containsKey(nextComponent)) { // if subtree contains in this.trees
+                Tree nextTree = trees.get(nextComponent);
+                nextTree.addPath(nameComponents, blob);
+            } else { // create new subtree
+                Tree subTree = new Tree(repo);
+                subTree.addPath(nameComponents, blob);
+            }
+        }
+
+    }
+
+    public void removePath(Queue<String> nameComponents) throws Exception {
+        String nextComponent = nameComponents.peek(); // TODO: is it correct?
+        if (nameComponents.size() == 1) { // if it is last component in path
+            blobs.remove(nextComponent);
+        } else {
+            Tree nextTree = trees.get(nextComponent);
+            nextTree.removePath(nameComponents);
+            if (nextTree.getBlobs().size() == 0 && nextTree.getTrees().size() == 0) { // if subtree become empty
+                trees.remove(nextComponent);
+            }
+        }
+
+    }
+
+    public void storeRecursivly() throws IOException {
+        for (Map.Entry<String, Tree> entry : trees.entrySet()) {
+            Tree subtree = entry.getValue();
+            subtree.storeRecursivly();
+        }
+
+        for (Map.Entry<String, Blob> entry : blobs.entrySet()) {
+            Blob blob = entry.getValue();
+            blob.store();
+        }
+        store();
+
+    }
+
+    public void store() throws IOException {
         sha = DigestUtils.sha256Hex(repr());
 
         // store
         Path currentTreeObjectPath = repo.objectsDir.resolve(sha);
         if (repr().length() == 0)
-            Utils.writeContent(currentTreeObjectPath,"");
+            Utils.writeContent(currentTreeObjectPath, "");
         else
             Utils.writeContent(currentTreeObjectPath, repr());
     }
+
+//    private Tree buildFullTree(Path relativeDirPath) throws Exception {
+//        HashMap<String, String> blobs = new HashMap<>(); // name -> sha
+//        HashMap<String, String> trees = new HashMap<>(); // name -> sha
+//        Tree resultTree;
+//
+//        Path absoluteDirPath = repo.trackingDir.resolve(relativeDirPath);
+//
+//        for (File fileFile : absoluteDirPath.toFile().listFiles()) {
+//            Path absoluteFilePath = fileFile.toPath();
+//            Path relativeFilePath = repo.trackingDir.relativize(absoluteFilePath);
+//            if (fileFile.isFile()) {
+//                Blob blob = new Blob(this.repo, relativeFilePath);
+//                blobs.put(relativeFilePath.toString(), blob.sha);
+//            } else if (fileFile.isDirectory()) {
+//                Tree tree = buildFullTree(relativeFilePath);
+//                trees.put(relativeFilePath.toString(), tree.sha);
+//            }
+//        }
+//        System.out.println("building tree " + relativeDirPath.toString() + " " + blobs.size() + " " + trees.size());
+//        resultTree = new Tree(this.repo, blobs, trees);
+////        System.out.println("\trepr:"+resultTree.repr().split("\n").length);
+//        return resultTree;
+//    }
 
     //  return: relativeFileName -> Blob
     public Map<String, Blob> getBlobs() {
@@ -97,14 +168,15 @@ public class Tree extends GitObject {
         return trees;
     }
 
-    //  return: relativeFileName -> Blob
-    public Map<String, Blob> getAllSubBlobs() {
-        Map<String, Blob> result = new HashMap<>(blobs);
-        for (Map.Entry<String, Tree> entry : trees.entrySet()) {
-            result.putAll(entry.getValue().getAllSubBlobs());
-        }
-        return result;
-    }
+//    //  return: relativeFileName -> Blob
+//    public Map<String, Blob> getAllSubBlobs() {
+//        Map<String, Blob> result = new HashMap<>(blobs);
+//        for (Map.Entry<String, Tree> entry : trees.entrySet()) {
+//            result.putAll(entry.getValue().getAllSubBlobs());
+//        }
+//        return result;
+//    }
+
 
     @Override
     public String repr() {

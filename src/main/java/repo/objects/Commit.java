@@ -48,7 +48,7 @@ public class Commit extends GitObject {
 
     //  create absolutely new commit
     public Commit(Repo repo, String treeSha, Set<String> parentsShas, String message) throws Exception {
-        super(repo, "");
+        super(repo);
         tree = new Tree(repo, treeSha);
         date = (new Date()).toString();
         Set<Commit> parents_ = new HashSet<>();
@@ -64,9 +64,7 @@ public class Commit extends GitObject {
 
         sha = DigestUtils.sha256Hex(repr());
 
-//        store
-        Path commitObjectPath = repo.objectsDir.resolve(sha);
-        Utils.writeContent(commitObjectPath, repr());
+        store();
     }
 
     public Tree getTree() {
@@ -100,6 +98,12 @@ public class Commit extends GitObject {
         s.append(message);
 
         return s.toString();
+    }
+
+    public void store() throws IOException {
+        //        store
+        Path commitObjectPath = repo.objectsDir.resolve(sha);
+        Utils.writeContent(commitObjectPath, repr());
     }
 
 }

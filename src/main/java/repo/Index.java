@@ -2,6 +2,7 @@ package repo;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import repo.objects.Blob;
+import repo.objects.Tree;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -12,6 +13,7 @@ import java.util.*;
 public class Index {
     private final Repo repo;
     private final SortedMap<String, Blob> records = new TreeMap<>(); // relativeFileName -> Blob
+
 
     Index(Repo repo) {
         this.repo = repo;
@@ -51,9 +53,34 @@ public class Index {
         }
     }
 
+    public Tree buildNewTree() throws Exception {
+        Map<String, INDEX_HEAD_STATUS> relativeNamesStatuses = getINDEX_HEADstatuses();
+
+    }
+
+
+    public Map<String, INDEX_HEAD_STATUS> getINDEX_HEADstatuses() throws Exception {
+        Map<String, Blob> headFiles = repo.head.getFiles(); // relativeFileName -> Blob
+        Map<String, Blob> indexedFiles = getRecords(); // relativeFileName -> Blob
+
+        Map<String, INDEX_HEAD_STATUS> result = new HashMap<>();
+        Set<String> resultKeys = new HashSet<>();
+
+        resultKeys.addAll(headFiles.keySet());
+        resultKeys.addAll(indexedFiles.keySet());
+
+        for (String relativeFileName : resultKeys) {
+            INDEX_HEAD_STATUS indexHeadStatus = INDEX_HEAD_STATUS.getFileStatus(relativeFileName, headFiles, indexedFiles);
+
+            result.put(relativeFileName, indexHeadStatus);
+        }
+        return result;
+    }
+
     public boolean contains(String relativeFileName) {
         return records.containsKey(relativeFileName);
     }
+
 
     //    relativeFileName -> Blob
     public SortedMap<String, Blob> getRecords() {
