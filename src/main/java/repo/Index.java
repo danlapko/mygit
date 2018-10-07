@@ -10,58 +10,33 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 
-public class Index {
+public class Index implements GitGettable, GitSettable {
     private final Repo repo;
-    private final SortedMap<String, Blob> records = new TreeMap<>(); // relativeFileName -> Blob
+    private final Tree tree;
 
-
-    Index(Repo repo) {
+    //  load Index from file "index" on any other command
+    Index(Repo repo) throws IOException {
         this.repo = repo;
+
+        String treeSha = Utils.readFileContent(repo.indexPath);
+        tree = new Tree(repo, treeSha);
     }
 
     //  create absolutely new Index on command "mygit init"
-    void init() {
-        // nothing to do :)
+    Index(Repo repo, Tree tree) throws IOException {
+        this.repo = repo;
+        this.tree = tree;
+        store();
     }
 
-    //  load Index from file "index" on any other command
-    void load() throws IOException {
-        List<String> lines = Utils.readFileContentList(repo.indexPath);
-        for (String line : lines) {
-            String[] lineElems = line.split(" ");
-            records.put(lineElems[0], new Blob(repo, lineElems[1]));
-        }
-    }
-
-    public void add(Path relativeFilePath) throws IOException {
-        Path absoluteFilePath = repo.trackingDir.resolve(relativeFilePath);
-
-        String content = Utils.readFileContent(absoluteFilePath);
-
-        String contentSha = DigestUtils.sha256Hex(content);
-
-        if (!records.containsKey(relativeFilePath.toString()) || (!records.get(relativeFilePath.toString()).sha.equals(contentSha))) {
-            records.put(relativeFilePath.toString(), new Blob(repo, relativeFilePath));
-            store();
-        }
-    }
-
-    public void remove(Path relativeFilePath) throws IOException {
-        if (records.containsKey(relativeFilePath.toString())) {
-            records.remove(relativeFilePath.toString());
-            store();
-        }
-    }
-
-    public Tree buildNewTree() throws Exception {
-        Map<String, INDEX_HEAD_STATUS> relativeNamesStatuses = getINDEX_HEADstatuses();
-
+    public Tree getTree() {
+        return tree;
     }
 
 
-    public Map<String, INDEX_HEAD_STATUS> getINDEX_HEADstatuses() throws Exception {
-        Map<String, Blob> headFiles = repo.head.getFiles(); // relativeFileName -> Blob
-        Map<String, Blob> indexedFiles = getRecords(); // relativeFileName -> Blob
+    public Map<String, INDEX_HEAD_STATUS> getIndexHeadStatuses() throws Exception {
+        Map<String, Blob> headFiles = repo.head.getAll(); // relativeFileName -> Blob
+        Map<String, Blob> indexedFiles = getAll(); // relativeFileName -> Blob
 
         Map<String, INDEX_HEAD_STATUS> result = new HashMap<>();
         Set<String> resultKeys = new HashSet<>();
@@ -77,32 +52,71 @@ public class Index {
         return result;
     }
 
-    public boolean contains(String relativeFileName) {
-        return records.containsKey(relativeFileName);
+    @Override
+    public Blob get(Path relativeFilePath) {
+        return tree.get(relativeFilePath);
+    }
+
+    @Override
+    public Map<String, Blob> getAll() {
+        return tree.getAll();
+    }
+
+    @Override
+    public boolean contains(Path relativeFilePath) {
+        return tree.contains(relativeFilePath);
+    }
+
+    @Override
+    public boolean empty() {
+        return false;
+    }
+
+    @Override
+    public void add(Path relativeFilePath) throws IOException {
+        tree.add(relativeFilePath);
+        store();
+    }
+
+    @Override
+    public void addAll(Set<Path> paths) throws IOException {
+        tree.addAll(paths);
+        store();
+
+    }
+
+    @Override
+    public void remove(Path relativeFilePath) throws IOException {
+        tree.remove(relativeFilePath);
+        store();
+    }
+
+    @Override
+    public void removeAll(Set<Path> paths) throws IOException {
+        tree.removeAll(paths);
+        store();
     }
 
 
-    //    relativeFileName -> Blob
-    public SortedMap<String, Blob> getRecords() {
-        return records;
+    String repr() {
+        return tree.sha;
     }
 
-    //   relativeFileNames
-    public Set<String> getIndexedFileNames() {
-        return records.keySet();
-    }
+//    ============== private =============
 
     private void store() throws IOException {
         Utils.writeContent(repo.indexPath, repr());
     }
 
-    String repr() {
-        List<String> recs = new ArrayList<>();
-        for (Map.Entry<String, Blob> entry : records.entrySet()) { // entry: relativeFileName -> Blob
-            recs.add(entry.getKey() + " " + entry.getValue().sha);
-
-        }
-        return String.join("\n", recs);
-    }
 }
 
+
+//    //    relativeFileName -> Blob
+//    public SortedMap<String, Blob> getRecords() {
+//        return records;
+//    }
+//
+//    //   relativeFileNames
+//    public Set<String> getIndexedFileNames() {
+//        return records.keySet();
+//    }

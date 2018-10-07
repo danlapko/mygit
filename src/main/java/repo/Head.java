@@ -2,93 +2,116 @@ package repo;
 
 import repo.objects.Blob;
 import repo.objects.Commit;
-import repo.objects.Tree;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.HashMap;
+import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-public class Head {
+// Head could be updated during life, but it is also autosaves on each update.
+// There are two possibilities: * load head from branch file
+//                              * create absolute new head (it will be stored into branch file inplace)
+
+public class Head implements GitGettable {
+
     private final Repo repo;
-    private String pointer; // branchName or commitSha
-    private boolean detached;
+    private GitGettable pointer = null; // branch or commit
 
-    Head(Repo repo) {
+    //  load existing Head from file "HEAD"
+    Head(Repo repo) throws Exception {
         this.repo = repo;
-    }
-
-    //  create absolutely new Head on command "mygit init"
-    void init(String branchName) throws IOException {
-        pointer = branchName;
-        detached = false;
-
-        storeHead();
-    }
-
-    //  load Head from file "HEAD" on any other command
-    void load() throws IOException {
         List<String> lines = Utils.readFileContentList(repo.headPath);
+
         assert lines.size() == 2;
-        pointer = lines.get(0);
-        detached = lines.get(1).equals("true");
-    }
 
-    void moveToBranch(String branchToMoveName) throws IOException {
-        if (!Files.exists(repo.branchesDir.resolve(branchToMoveName))) {
-            throw new IOException(" such branch " + branchToMoveName + " does not exists and I can't move to it!");
-        }
-        detached = false;
-        pointer = branchToMoveName;
+        boolean detached = lines.get(1).equals("true");
 
-        storeHead();
-    }
-
-    public boolean contains(String relativeFileName) throws Exception {
-        return getFiles().containsKey(relativeFileName);
-    }
-
-    public Map<String, Blob> getFiles() throws Exception {
-        Map<String, Blob> headFiles;
-        String headCommitSha = getCommitSha();
-
-        if (headCommitSha.equals("empty_sha")) {
-            headFiles = new HashMap<>();
+        if (!detached) {
+            String branchName = lines.get(0);
+            moveToBranch(branchName);
         } else {
-            Commit headCommit = new Commit(repo, headCommitSha);
-            Tree headTree = headCommit.getTree();
-            headFiles = headTree.getAllSubBlobs();
+            String commitSha = lines.get(0);
+            moveToCommit(commitSha);
         }
-
-        return headFiles;
     }
 
-
-    void moveToCommit(String sha) throws IOException {
-        this.detached = true;
-        this.pointer = sha;
-
-        storeHead();
+    //  create new head
+    Head(Repo repo, String branchName) throws Exception {
+        this.repo = repo;
+        moveToBranch(branchName);
     }
 
-    String getCommitSha() {
-        if (this.detached) {
-            return this.pointer;
+    public Commit getCommit() throws Exception {
+        if (!detached()) {
+            return ((Branch) pointer).getCommit();
         } else {
-            return repo.branches.get(this.pointer).getCommitSha();
+            return (Commit) pointer;
         }
     }
 
-    private void storeHead() throws IOException {
+    public Branch getBranch() throws Exception {
+        if (!detached()) {
+            return (Branch) pointer;
+        } else {
+            return null;
+        }
+    }
+
+
+    public void moveToBranch(String branchName) throws Exception {
+        pointer = new Branch(repo, branchName); // from existing branch
+        store();
+    }
+
+    public void moveToCommit(String commitSha) throws Exception {
+        pointer = new Commit(repo, commitSha); // from existing commit
+        store();
+    }
+
+    public boolean detached() throws Exception {
+        if (pointer instanceof Branch) {
+            return false;
+        } else if (pointer instanceof Commit) {
+            return true;
+        } else {
+            throw new Exception("incorrect head state");
+        }
+    }
+
+    @Override
+    public Blob get(Path relativeFilePath) {
+        return pointer.get(relativeFilePath);
+    }
+
+    @Override
+    public Map<String, Blob> getAll() {
+        return pointer.getAll();
+    }
+
+    @Override
+    public boolean contains(Path relativeFilePath) {
+        return pointer.contains(relativeFilePath);
+    }
+
+    @Override
+    public boolean empty() {
+        return pointer.empty();
+    }
+
+//    ============== private =============
+
+    private void store() throws Exception {
         List<String> listToWrite = new LinkedList<>();
-        listToWrite.add(pointer);
-        if (detached) {
-            listToWrite.add("true");
+
+        if (!detached()) {
+            listToWrite.add(((Branch) pointer).getName());
         } else {
-            listToWrite.add("false");
+            listToWrite.add(((Commit) pointer).sha);
         }
+
+        listToWrite.add(Boolean.toString(detached()));
+
         Utils.writeContent(repo.headPath, listToWrite);
     }
+
 }

@@ -8,15 +8,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class MyGit {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
         @SuppressWarnings("unchecked")
         Cli.CliBuilder<GitCommand> builder = Cli.<GitCommand>builder("mygit")
                 .withDescription("Simple git")
                 .withCommands(
-                        Init.class,
-                        Add.class,
-                        Rm.class,
-                        Status.class
+                        CmdInit.class,
+                        CmdAdd.class,
+                        CmdRm.class,
+                        CmdStatus.class,
+                        CmdCommit.class
                 );
         Cli<GitCommand> parser = builder.build();
 
@@ -36,7 +37,7 @@ public class MyGit {
 
         // in case repository not found and command is not useful without it
         // print error
-        if (!repo.load() && !(cmd instanceof Init)) {
+        if (!repo.load() && !(cmd instanceof CmdInit)) {
             System.err.println("FATAL: can't find mygit repository near " + workingDir);
             return;
         }

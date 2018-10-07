@@ -1,6 +1,7 @@
 package repo.objects;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import repo.GitGettable;
 import repo.Repo;
 import repo.Utils;
 
@@ -9,15 +10,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-public class Commit extends GitObject {
+// Commit could not be updated during life.
+// There are two possibilities: * load commit from object file
+//                              * create absolute new commit (it will be stored into object file inplace)
+
+public class Commit extends GitObject implements GitGettable {
     private final Tree tree;
     private final String date;
 
-    private final Set<Commit> parents;
+    private final Set<Commit> parents = new HashSet<>();
     private final String message;
 
     //  create from existing Commit from objects dir
-    public Commit(Repo repo, String commitSha) throws Exception {
+    public Commit(Repo repo, String commitSha) throws IOException {
         super(repo, commitSha);
 
         Path commitObjectPath = repo.objectsDir.resolve(commitSha);
@@ -29,7 +34,6 @@ public class Commit extends GitObject {
         tree = new Tree(repo, lines.get(0).split(" ")[1]);
         date = lines.get(1).split(" ")[1];
 
-        Set<Commit> parents_ = new HashSet<>();
         StringBuilder message_ = new StringBuilder();
         for (String line : lines) {
             String[] line_list = line.split(" ");
@@ -39,9 +43,8 @@ public class Commit extends GitObject {
                 continue;
             }
             Commit parent_commit = new Commit(repo, line_list[1]);
-            parents_.add(parent_commit);
+            parents.add(parent_commit);
         }
-        parents = parents_;
         message = message_.toString();
 
     }
@@ -51,19 +54,16 @@ public class Commit extends GitObject {
         super(repo);
         tree = new Tree(repo, treeSha);
         date = (new Date()).toString();
-        Set<Commit> parents_ = new HashSet<>();
 
         if (parentsShas != null) {
             for (String parentSha : parentsShas) {
-                parents_.add(new Commit(repo, parentSha));
+                parents.add(new Commit(repo, parentSha));
             }
         }
 
-        parents = parents_;
         this.message = message;
 
         sha = DigestUtils.sha256Hex(repr());
-
         store();
     }
 
@@ -100,10 +100,31 @@ public class Commit extends GitObject {
         return s.toString();
     }
 
-    public void store() throws IOException {
-        //        store
+
+    @Override
+    public Blob get(Path relativeFilePath) {
+        return tree.get(relativeFilePath);
+    }
+
+    @Override
+    public Map<String, Blob> getAll() {
+        return tree.getAll();
+    }
+
+    @Override
+    public boolean contains(Path relativeFilePath) {
+        return tree.contains(relativeFilePath);
+    }
+
+    @Override
+    public boolean empty() {
+        return tree.empty();
+    }
+
+//    ============== private =============
+
+    private void store() throws IOException {
         Path commitObjectPath = repo.objectsDir.resolve(sha);
         Utils.writeContent(commitObjectPath, repr());
     }
-
 }

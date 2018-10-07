@@ -1,20 +1,28 @@
 package repo.objects;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import repo.GitGettable;
+import repo.GitSettable;
 import repo.Repo;
 import repo.Utils;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.Pattern;
 
-public class Tree extends GitObject {
+// Tree can be updated during life, but it is also autosaves on each update.
+// There are two possibilities: * load tree from object file
+//                              * create absolute new tree (it will be not stored until first update come)
+
+public class Tree extends GitObject implements GitGettable, GitSettable {
     private final Map<String, Blob> blobs; // relativeFileName -> Blob
     private final Map<String, Tree> trees; // relativeFileName -> Tree
 
     // create from existing tree from objects dir
-    Tree(Repo repo, String objectSha) throws Exception {
+    public Tree(Repo repo, String objectSha) throws IOException {
         super(repo, objectSha);
 
         // reconstruct from object file
@@ -28,6 +36,8 @@ public class Tree extends GitObject {
 
         for (String line : Utils.readFileContentList(treeObjectPath)) {
             String[] lineList = line.split(" ");
+            if (lineList.length < 2)
+                continue;
             String type = lineList[0];
             String lineSha = lineList[1];
             String lineRelativeFileName = lineList[2];
@@ -39,11 +49,12 @@ public class Tree extends GitObject {
                     trees.put(lineRelativeFileName, new Tree(repo, lineSha));
                     break;
                 default:
-                    throw new Exception();
+                    throw new IOException("invalid tree object structure " + treeObjectPath.toString());
             }
 
         }
         // end of reconstruct
+        sha = DigestUtils.sha256Hex(repr());
     }
 
 
@@ -52,87 +63,197 @@ public class Tree extends GitObject {
         super(repo);
         blobs = new HashMap<>();
         trees = new HashMap<>();
-        store(); // TODO ?
-
+        store();
     }
 
-    //  create absolutely new tree
-    // blobs: relativeFileName -> blobSha
-    // trees: relativeFileName -> treeSha
-    public Tree(Repo repo, Map<String, String> blobs, Map<String, String> trees) throws Exception {
-        super(repo);
+    @Override
+    public Blob get(Path relativeFilePath) {
+        Deque<String> nameSegments = convertRelativePathToSegments(relativeFilePath);
+        return get(nameSegments);
+    }
 
-        this.blobs = new HashMap<>(); // relativeFileName -> Blob
-        this.trees = new HashMap<>(); // relativeFileName -> Tree
+    // relativeFileName -> blob
+    @Override
+    public Map<String, Blob> getAll() {
 
-        for (Map.Entry<String, String> entry : blobs.entrySet()) {
-            Blob blob = new Blob(repo, entry.getValue());
-            this.blobs.put(entry.getKey(), blob);
+        Map<String, Blob> result = new HashMap<>(blobs);
+
+        for (Map.Entry<String, Tree> treeEntry : trees.entrySet()) {
+            String subtreeName = treeEntry.getKey();
+            Tree subtree = treeEntry.getValue();
+            Map<String, Blob> subresult = subtree.getAll();
+            for (Map.Entry<String, Blob> blobEntry : subresult.entrySet()) {
+                result.put(subtreeName + "/" + blobEntry.getKey(), blobEntry.getValue());
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public boolean contains(Path relativeFilePath) {
+        Deque<String> nameSegments = convertRelativePathToSegments(relativeFilePath);
+        return contains(nameSegments);
+    }
+
+    @Override
+    public boolean empty() {
+        return 0 == trees.size() + blobs.size();
+    }
+
+    @Override
+    public void add(Path relativeFilePath) throws IOException {
+        Blob blob = new Blob(repo, relativeFilePath);
+        Deque<String> nameSegments = convertRelativePathToSegments(relativeFilePath);
+        add(nameSegments, blob);
+        store();
+    }
+
+    @Override
+    public void addAll(Set<Path> paths) throws IOException {
+        for (Path relativeFilePath : paths) {
+            Blob blob = new Blob(repo, relativeFilePath);
+
+            Deque<String> nameSegments = convertRelativePathToSegments(relativeFilePath);
+            add(nameSegments, blob); // internalAdd
         }
 
-        for (Map.Entry<String, String> entry : trees.entrySet()) {
-            Tree tree = new Tree(repo, entry.getValue());
-            this.trees.put(entry.getKey(), tree);
+        store();
+    }
+
+    @Override
+    public void remove(Path relativeFilePath) throws IOException {
+        Deque<String> nameSegments = convertRelativePathToSegments(relativeFilePath);
+        remove(nameSegments);
+
+        store();
+    }
+
+    @Override
+    public void removeAll(Set<Path> paths) throws IOException {
+        for (Path relativeFilePath : paths) {
+
+            Deque<String> nameSegments = convertRelativePathToSegments(relativeFilePath);
+            remove(nameSegments); // internalRemove
         }
 
         store();
     }
 
 
-    public void addPath(Queue<String> nameComponents, Blob blob) throws Exception {
-        String nextComponent = nameComponents.peek(); // TODO: is it correct?
-        if (nameComponents.size() == 1) { // if it is last component in path
-            blobs.put(nextComponent, blob);
+    @Override
+    public String repr() {
+        StringBuilder s = new StringBuilder();
+        for (Map.Entry<String, Blob> entry : blobs.entrySet()) {
+            s.append("blob ").append(entry.getValue().sha).append(" ").append(entry.getKey()).append("\n");
+        }
+
+        for (Map.Entry<String, Tree> entry : trees.entrySet()) {
+            s.append("tree ").append(entry.getValue().sha).append(" ").append(entry.getKey()).append("\n");
+        }
+
+        return s.toString();
+    }
+
+    public void print(String indent) {
+        for (Map.Entry<String, Blob> blobEntry : blobs.entrySet()) {
+            System.out.println(indent + "-" + blobEntry.getKey() + " " + blobEntry.getValue());
+        }
+        for (Map.Entry<String, Tree> treeEntry : trees.entrySet()) {
+            System.out.println(indent + treeEntry.getKey());
+            treeEntry.getValue().print(indent + "   ");
+        }
+    }
+
+
+//    ================= private ================
+
+    private Blob get(Deque<String> nameSegments) {
+        String nextSegment = nameSegments.pop();
+        if (nameSegments.size() == 0) {
+            return blobs.getOrDefault(nextSegment, null);
         } else {
-            if (trees.containsKey(nextComponent)) { // if subtree contains in this.trees
-                Tree nextTree = trees.get(nextComponent);
-                nextTree.addPath(nameComponents, blob);
+            if (!trees.containsKey(nextSegment)) return null;
+            else return trees.get(nextSegment).get(nameSegments);
+        }
+    }
+
+    private boolean contains(Deque<String> nameSegments) {
+        return null != get(nameSegments);
+    }
+
+    private static Deque<String> convertRelativePathToSegments(Path relativePath) {
+        return new ArrayDeque<>(Arrays.asList(relativePath.toString().split(Pattern.quote(File.separator))));
+    }
+
+    private void add(Deque<String> nameSegments, Blob blob) throws IOException {
+        String nextSegment = nameSegments.pop(); // TODO: is it correct?
+        if (nameSegments.size() == 0) { // if it is last component in path
+            blobs.put(nextSegment, blob);
+        } else {
+            if (trees.containsKey(nextSegment)) { // if subtree contains in this.trees
+                Tree nextTree = trees.get(nextSegment);
+                nextTree.add(nameSegments, blob);
             } else { // create new subtree
                 Tree subTree = new Tree(repo);
-                subTree.addPath(nameComponents, blob);
+                trees.put(nextSegment, subTree);
+                subTree.add(nameSegments, blob);
             }
         }
 
     }
 
-    public void removePath(Queue<String> nameComponents) throws Exception {
-        String nextComponent = nameComponents.peek(); // TODO: is it correct?
-        if (nameComponents.size() == 1) { // if it is last component in path
-            blobs.remove(nextComponent);
+    private void remove(Deque<String> nameSegments) {
+        String nextSegments = nameSegments.pop(); // TODO: is it correct?
+        if (nameSegments.size() == 0) { // if it is last component in path
+            blobs.remove(nextSegments);
         } else {
-            Tree nextTree = trees.get(nextComponent);
-            nextTree.removePath(nameComponents);
-            if (nextTree.getBlobs().size() == 0 && nextTree.getTrees().size() == 0) { // if subtree become empty
-                trees.remove(nextComponent);
+            Tree nextTree = trees.get(nextSegments);
+            nextTree.remove(nameSegments);
+            if (nextTree.empty()) { // if subtree become empty
+                trees.remove(nextSegments);
             }
         }
 
     }
 
-    public void storeRecursivly() throws IOException {
+    private void store() throws IOException {
         for (Map.Entry<String, Tree> entry : trees.entrySet()) {
             Tree subtree = entry.getValue();
-            subtree.storeRecursivly();
+            subtree.store();
         }
 
-        for (Map.Entry<String, Blob> entry : blobs.entrySet()) {
-            Blob blob = entry.getValue();
-            blob.store();
-        }
-        store();
-
-    }
-
-    public void store() throws IOException {
         sha = DigestUtils.sha256Hex(repr());
 
-        // store
         Path currentTreeObjectPath = repo.objectsDir.resolve(sha);
         if (repr().length() == 0)
             Utils.writeContent(currentTreeObjectPath, "");
         else
             Utils.writeContent(currentTreeObjectPath, repr());
     }
+}
+
+//    //  create absolutely new tree
+//    // blobs: relativeFileName -> blobSha
+//    // trees: relativeFileName -> treeSha
+//    public Tree(Repo repo, Map<String, String> blobs, Map<String, String> trees) throws Exception {
+//        super(repo);
+//
+//        this.blobs = new HashMap<>(); // relativeFileName -> Blob
+//        this.trees = new HashMap<>(); // relativeFileName -> Tree
+//
+//        for (Map.Entry<String, String> entry : blobs.entrySet()) {
+//            Blob blob = new Blob(repo, entry.getValue());
+//            this.blobs.put(entry.getKey(), blob);
+//        }
+//
+//        for (Map.Entry<String, String> entry : trees.entrySet()) {
+//            Tree tree = new Tree(repo, entry.getValue());
+//            this.trees.put(entry.getKey(), tree);
+//        }
+//
+//        store();
+//    }
+
 
 //    private Tree buildFullTree(Path relativeDirPath) throws Exception {
 //        HashMap<String, String> blobs = new HashMap<>(); // name -> sha
@@ -158,38 +279,12 @@ public class Tree extends GitObject {
 //        return resultTree;
 //    }
 
-    //  return: relativeFileName -> Blob
-    public Map<String, Blob> getBlobs() {
-        return blobs;
-    }
-
-    //  return: relativeFileName -> Tree
-    public Map<String, Tree> getTrees() {
-        return trees;
-    }
 
 //    //  return: relativeFileName -> Blob
-//    public Map<String, Blob> getAllSubBlobs() {
+//    public Map<String, Blob> getAll() {
 //        Map<String, Blob> result = new HashMap<>(blobs);
 //        for (Map.Entry<String, Tree> entry : trees.entrySet()) {
-//            result.putAll(entry.getValue().getAllSubBlobs());
+//            result.putAll(entry.getValue().getAll());
 //        }
 //        return result;
 //    }
-
-
-    @Override
-    public String repr() {
-        StringBuilder s = new StringBuilder();
-        for (Map.Entry<String, Blob> entry : blobs.entrySet()) {
-            s.append("blob ").append(entry.getValue().sha).append(" ").append(entry.getKey()).append("\n");
-        }
-
-        for (Map.Entry<String, Tree> entry : trees.entrySet()) {
-            s.append("tree ").append(entry.getValue().sha).append(" ").append(entry.getKey()).append("\n");
-        }
-
-        return s.toString();
-    }
-
-}

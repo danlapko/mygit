@@ -12,11 +12,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Command(name = "add", description = "adds files to index")
-public class Add implements GitCommand {
+@Command(name = "rm", description = "remove files from index")
+public class CmdRm implements GitCommand {
     private List<Path> absoluteFilePaths = new LinkedList<>();
 
-    @Arguments(description = "Directories and file names to be added", required = true)
+    @Arguments(description = "Directories and file names to be removed", required = true)
     private List<String> dirtyFileNames;
 
     @Override
@@ -25,7 +25,7 @@ public class Add implements GitCommand {
         for (String fileName : dirtyFileNames) {
             Path filePath = Paths.get(fileName);
             Path absoluteFilePath;
-
+            Path relativeFilePath;
 
             if (filePath.isAbsolute() && !filePath.startsWith(repo.repoDir)) {
                 throw new IOException("file could not be tracked (out of repo) " + filePath.toString());
@@ -33,12 +33,10 @@ public class Add implements GitCommand {
 
             if (filePath.isAbsolute()) {
                 absoluteFilePath = filePath;
+                relativeFilePath = repo.trackingDir.relativize(absoluteFilePath);
             } else {
                 absoluteFilePath = repo.trackingDir.resolve(filePath);
-            }
-
-            if (!Files.exists(absoluteFilePath)) {
-                throw new IOException("file does not exists " + filePath.toString());
+                relativeFilePath = filePath;
             }
 
             if (Files.isDirectory(absoluteFilePath)) {
@@ -48,6 +46,7 @@ public class Add implements GitCommand {
                         .filter(pth -> !pth.startsWith(repo.repoDir))
                         .filter(Files::isRegularFile)
                         .filter(Files::isReadable)
+//                        .filter(pth -> (repo.index.contains(pth)))
                         .collect(Collectors.toList());
                 absoluteFilePaths.addAll(dirFileNames);
             } else {
@@ -57,13 +56,14 @@ public class Add implements GitCommand {
 
         }
 
-//      add relative file paths to index
+//      remove relative file paths from index
         for (Path absoluteFilePath : absoluteFilePaths) {
             Path relativeFilePath = repo.trackingDir.relativize(absoluteFilePath);
-            repo.index.add(relativeFilePath);
+            repo.index.remove(relativeFilePath);
         }
 
         return 0;
     }
 
 }
+

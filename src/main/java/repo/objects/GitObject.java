@@ -27,7 +27,6 @@ abstract class GitObject {
         }
     }
 
-
     abstract public String repr() throws Exception;
 
 }

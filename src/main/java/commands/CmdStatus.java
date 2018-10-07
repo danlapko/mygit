@@ -16,11 +16,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Command(name = "status", description = "prints modified/deleted/not_tracked files")
-public class Status implements GitCommand {
+public class CmdStatus implements GitCommand {
     @Override
     public int execute(Repo repo, Path workingDir) throws Exception {
 
         Map<String, STATUS> statuses = repo.getFilesStatuses();
+
 
         // changes to be committed
         Map<INDEX_HEAD_STATUS, List<String>> changesToBeCommited = new HashMap<>();
@@ -35,6 +36,7 @@ public class Status implements GitCommand {
         }
 
         System.out.println("\nCHANGES TO BE COMMITTED:");
+
 
         System.out.println("\tNEW_FILE:");
         for (String relativeName : changesToBeCommited.get(INDEX_HEAD_STATUS.NEWFILE)) {
@@ -66,6 +68,7 @@ public class Status implements GitCommand {
         }
 
         System.out.println("\nUNSTAGED CHANGES:");
+
 
         System.out.println("\tUNTRACKED:");
         for (String relativeName : unstagedChanges.get(WORKDIR_INDEX_STATUS.UNTRACKED)) {

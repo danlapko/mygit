@@ -5,11 +5,12 @@ import repo.Repo;
 import repo.Utils;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
+
+// Blob could not be updated during life.
+// There are two possibilities: * load blob from object file
+//                              * create absolute new blob (it will be stored into object file inplace)
 
 public class Blob extends GitObject {
     private final String content;
@@ -33,17 +34,19 @@ public class Blob extends GitObject {
         content = Utils.readFileContent(absoluteFilePath);
         sha = DigestUtils.sha256Hex(content);
 
-//        store
         store();
-    }
-    public void store() throws IOException {
-        Path blobObjectPath = repo.objectsDir.resolve(sha);
-        Utils.writeContent(blobObjectPath, repr());
     }
 
     @Override
     public String repr() {
         return content;
+    }
+
+//    ============== private =============
+
+    private void store() throws IOException {
+        Path blobObjectPath = repo.objectsDir.resolve(sha);
+        Utils.writeContent(blobObjectPath, repr());
     }
 
 }

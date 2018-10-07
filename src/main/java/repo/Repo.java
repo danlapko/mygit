@@ -30,8 +30,8 @@ public class Repo {
 
 
     Map<String, Branch> branches = new HashMap<>(); // branchName -> Branch
-    public Head head = new Head(this);
-    public Index index = new Index(this);
+    public Head head;
+    public Index index;
 
 
     public Repo(Path trackingDir) {
@@ -55,30 +55,38 @@ public class Repo {
             Files.createFile(headPath);
             Files.createFile(indexPath);
 
-            head.init(MASTER_BRANCH_NAME);
-            index.init();
+            Tree tree = new Tree(this);
+            Commit commit = new Commit(this, tree.sha, null, "INITIAL COMMIT");
+            Branch master = new Branch(this, MASTER_BRANCH_NAME, commit.sha);
+            branches.put(MASTER_BRANCH_NAME, master);
 
-            Branch masterBranch = new Branch(this, MASTER_BRANCH_NAME, "empty_sha");
-            branches.put(MASTER_BRANCH_NAME, masterBranch);
-            head.moveToBranch(MASTER_BRANCH_NAME);
-            // Commit firstCommit = new Commit(this, buildFullTree(trackingDir.resolve("test_dir")).sha, null, "init commit");
+            head = new Head(this, master.getName());
+            index = new Index(this, tree);
+
         }
     }
 
     //  load repository on any command except "mygit init"
     //  returns false if there is no repository dir (".mygit")
-    public boolean load() throws IOException {
+    public boolean load() throws Exception {
         if (!Files.exists(repoDir))
             return false;
 
-        head.load();
-        index.load();
+        head = new Head(this);
+        index = new Index(this);
 
         for (File branchFileName : branchesDir.toFile().listFiles()) {
             Branch oneAnotherBranch = new Branch(this, branchFileName.getName());
             branches.put(branchFileName.getName(), oneAnotherBranch);
-
         }
+
+        System.out.println("<master tree>");
+        branches.get("master").getCommit().getTree().print("");
+        System.out.println("</master tree>\n");
+
+        System.out.println("<index tree>");
+        index.getTree().print("");
+        System.out.println("</index tree>\n");
         return true;
     }
 
@@ -114,25 +122,11 @@ public class Repo {
         return result;
     }
 
-//    public STATUS getFileStatus(Path relativeFilePath) throws Exception {
-//        Path absoluteFilePath = trackingDir.resolve(relativeFilePath);
-//
-//        Map<String, Blob> headFiles = head.getFiles(); // relativeFileName -> Blob
-//        Map<String, Blob> indexedFiles = index.getRecords(); // relativeFileName -> Blob
-//        Map<String, String> workdirFiles = getWorkdirPathsShas(); // relativeFilePath -> Sha
-//
-//
-//        STATUS status = null;
-//        WORKDIR_INDEX_STATUS workdirIndexStatus = null;
-//        INDEX_HEAD_STATUS indexHeadStatus = null;
-//
-//        return null;
-//    }
 
     // relativeFileName -> STATUS
     public Map<String, STATUS> getFilesStatuses() throws Exception {
-        Map<String, Blob> headFiles = head.getFiles(); // relativeFileName -> Blob
-        Map<String, Blob> indexedFiles = index.getRecords(); // relativeFileName -> Blob
+        Map<String, Blob> headFiles = head.getAll(); // relativeFileName -> Blob
+        Map<String, Blob> indexedFiles = index.getAll(); // relativeFileName -> Blob
         Map<String, String> workdirFiles = getWorkdirPathsShas(); // relativeFilePath -> Sha
 
         Map<String, STATUS> result = new HashMap<>();
@@ -144,14 +138,13 @@ public class Repo {
 
 
         for (String relativeFileName : resultKeys) {
-            STATUS status = null;
-            WORKDIR_INDEX_STATUS workdirIndexStatus = null;
-            INDEX_HEAD_STATUS indexHeadStatus = null;
+            STATUS status;
+            WORKDIR_INDEX_STATUS workdirIndexStatus;
+            INDEX_HEAD_STATUS indexHeadStatus;
 
             // assign workdirIndexStatus
             workdirIndexStatus = WORKDIR_INDEX_STATUS.getFileStatus(relativeFileName, workdirFiles, indexedFiles);
 
-//            System.out.println(relativeFileName + " " + workdirFiles.containsKey(relativeFileName) + " " + indexedFiles.containsKey(relativeFileName));
 
             // assign indexHeadStatus
             indexHeadStatus = INDEX_HEAD_STATUS.getFileStatus(relativeFileName, headFiles, indexedFiles);
@@ -163,7 +156,25 @@ public class Repo {
     }
 
 
-    /*
+}
+
+
+//    public STATUS getFileStatus(Path relativeFilePath) throws Exception {
+//        Path absoluteFilePath = trackingDir.resolve(relativeFilePath);
+//
+//        Map<String, Blob> headFiles = head.getFiles(); // relativeFileName -> Blob
+//        Map<String, Blob> indexedFiles = index.getIndexedFiles(); // relativeFileName -> Blob
+//        Map<String, String> workdirFiles = getWorkdirPathsShas(); // relativeFilePath -> Sha
+//
+//
+//        STATUS status = null;
+//        WORKDIR_INDEX_STATUS workdirIndexStatus = null;
+//        INDEX_HEAD_STATUS indexHeadStatus = null;
+//
+//        return null;
+//    }
+
+/*
     private Tree buildSingleFile(Path path) throws Exception {
         HashMap<String, String> blobs = new HashMap<>(); // name -> sha
         HashMap<String, String> trees = new HashMap<>(); // name -> sha
@@ -219,4 +230,3 @@ public class Repo {
 
     }
     */
-}
