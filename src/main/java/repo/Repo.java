@@ -29,7 +29,7 @@ public class Repo {
     private final String MASTER_BRANCH_NAME = "master";
 
 
-    Map<String, Branch> branches = new HashMap<>(); // branchName -> Branch
+    public Map<String, Branch> branches = new HashMap<>(); // branchName -> Branch
     public Head head;
     public Index index;
 
@@ -80,13 +80,13 @@ public class Repo {
             branches.put(branchFileName.getName(), oneAnotherBranch);
         }
 
-        System.out.println("<master tree>");
-        branches.get("master").getCommit().getTree().print("");
-        System.out.println("</master tree>\n");
-
-        System.out.println("<index tree>");
-        index.getTree().print("");
-        System.out.println("</index tree>\n");
+//        System.out.println("<master tree>");
+//        branches.get("master").getCommit().getTree().print("");
+//        System.out.println("</master tree>\n");
+//
+//        System.out.println("<index tree>");
+//        index.getTree().print("");
+//        System.out.println("</index tree>\n");
         return true;
     }
 
