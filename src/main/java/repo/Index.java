@@ -23,7 +23,7 @@ public class Index implements GitGettable, GitSettable {
     }
 
     //  create absolutely new Index on command "mygit init"
-    Index(Repo repo, Tree tree) throws IOException {
+    public Index(Repo repo, Tree tree) throws IOException {
         this.repo = repo;
         this.tree = tree;
         store();
@@ -32,7 +32,6 @@ public class Index implements GitGettable, GitSettable {
     public Tree getTree() {
         return tree;
     }
-
 
     public Map<String, INDEX_HEAD_STATUS> getIndexHeadStatuses() throws Exception {
         Map<String, Blob> headFiles = repo.head.getAll(); // relativeFileName -> Blob

@@ -32,22 +32,25 @@ public class Commit extends GitObject implements GitGettable {
         }
         List<String> lines = Utils.readFileContentList(commitObjectPath);
         tree = new Tree(repo, lines.get(0).split(" ")[1]);
-        date = lines.get(1).split(" ")[1];
+
+        String[] dateLineList = lines.get(1).split(" ");
+        dateLineList = Arrays.copyOfRange(dateLineList, 1, dateLineList.length); // copy without first item
+        date = String.join(" ", dateLineList);
 
         StringBuilder message_ = new StringBuilder();
         for (String line : lines) {
             String[] line_list = line.split(" ");
-            if (!line_list[0].equals("parent")) {
-                if (!line_list[0].equals("tree") && !line_list[0].equals("date"))
-                    message_.append(line_list[0]);
-                continue;
+            if (!line_list[0].equals("parent") && !line_list[0].equals("tree") && !line_list[0].equals("date"))
+                message_.append(line);
+            else if (line_list[0].equals("parent")) {
+                Commit parent_commit = new Commit(repo, line_list[1]);
+                parents.add(parent_commit);
             }
-            Commit parent_commit = new Commit(repo, line_list[1]);
-            parents.add(parent_commit);
         }
         message = message_.toString();
 
     }
+
 
     //  create absolutely new commit
     public Commit(Repo repo, String treeSha, Set<String> parentsShas, String message) throws Exception {
@@ -83,6 +86,47 @@ public class Commit extends GitObject implements GitGettable {
         return parents;
     }
 
+    private boolean visited = false;
+
+    public void logVisit(Deque<String> reps, String fromRevision, boolean readyToLog) {
+        if (visited) {
+            return;
+        }
+
+        String s = "";
+        s += "commit " + sha + "\n";
+        s += repr();
+
+        if (!readyToLog && sha.equals(fromRevision)) {
+            readyToLog = true;
+        }
+        if (readyToLog) {
+            reps.push(s);
+        }
+
+        visited = true;
+
+        if (parents == null) {
+            return;
+        } else {
+            for (Commit parent : parents) {
+                parent.logVisit(reps, fromRevision, readyToLog);
+            }
+        }
+    }
+
+    public boolean checkRevisionIsAncestor(String revisionSha) {
+        if (revisionSha.equals(sha))
+            return true;
+        if (parents == null)
+            return false;
+
+        boolean result = false;
+        for (Commit parent : parents) {
+            result = result || parent.checkRevisionIsAncestor(revisionSha);
+        }
+        return result;
+    }
 
     @Override
     public String repr() {
