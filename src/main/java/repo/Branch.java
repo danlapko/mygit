@@ -32,7 +32,7 @@ public class Branch implements GitGettable {
     }
 
     //  create absolutely new branch
-    Branch(Repo repo, String branchName, String commitSha) throws Exception {
+    public Branch(Repo repo, String branchName, String commitSha) throws Exception {
         this.repo = repo;
         this.name = branchName;
         this.commit = new Commit(repo, commitSha);

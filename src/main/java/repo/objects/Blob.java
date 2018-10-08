@@ -16,14 +16,18 @@ public class Blob extends GitObject {
     private final String content;
 
     // create from existing object
-    public Blob(Repo repo, String shaFromObjects) throws IOException {
-        super(repo, shaFromObjects);
+    public Blob(Repo repo, String objectSha) throws IOException {
+        super(repo, objectSha);
 
-        Path blobObjectPath = repo.objectsDir.resolve(shaFromObjects);
+        Path blobObjectPath = repo.objectsDir.resolve(objectSha);
         if (!Files.exists(blobObjectPath)) {
             throw new IOException(" Blob object does not exists " + blobObjectPath.toString());
         }
         content = Utils.readFileContent(blobObjectPath);
+        String contentSha = DigestUtils.sha256Hex(content);
+        if (!contentSha.equals(objectSha)) {
+            throw new IOException(" Blob content sha != Blob object name. Blob: " + objectSha + ", contentSha: " + contentSha);
+        }
     }
 
     // create absolutely new object from relativeFilePath
