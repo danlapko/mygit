@@ -8,7 +8,7 @@ import repo.objects.Commit;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Set;
+import java.util.HashSet;
 
 @Command(name = "log", description = "logs commits history from head or from revision")
 public class CmdLog implements GitCommand {
@@ -26,7 +26,7 @@ public class CmdLog implements GitCommand {
 
         Commit currentCommit = repo.head.getCommit();
 
-        currentCommit.logVisit(deque, revisionSha, readyToLog);
+        currentCommit.logVisit(deque, revisionSha, readyToLog, new HashSet<>());
 
         while (!deque.isEmpty()) {
             System.out.println();

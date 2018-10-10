@@ -18,7 +18,7 @@ public class Branch implements GitGettable {
     private Commit commit;
 
     //  load branch from file
-    Branch(Repo repo, String branchName) throws IOException {
+    public Branch(Repo repo, String branchName) throws IOException {
         this.repo = repo;
         this.name = branchName;
 

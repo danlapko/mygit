@@ -120,6 +120,17 @@ public class Tree extends GitObject implements GitGettable, GitSettable {
         store();
     }
 
+
+    public void addAll(Map<Path, Blob> blobs) throws IOException {
+        for (Map.Entry<Path, Blob> entry : blobs.entrySet()) {
+
+            Deque<String> nameSegments = convertRelativePathToSegments(entry.getKey());
+            add(nameSegments, entry.getValue()); // internalAdd
+        }
+
+        store();
+    }
+
     @Override
     public void remove(Path relativeFilePath) throws IOException {
         Deque<String> nameSegments = convertRelativePathToSegments(relativeFilePath);

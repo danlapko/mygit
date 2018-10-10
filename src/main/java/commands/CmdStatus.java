@@ -20,6 +20,13 @@ public class CmdStatus implements GitCommand {
     @Override
     public int execute(Repo repo, Path workingDir) throws Exception {
 
+        System.out.println("Branches: " + repo.branches.keySet());
+        if (repo.head.detached()) {
+            System.out.println("On commit " + repo.head.getCommit().sha + " (detached)");
+        } else {
+            System.out.println("On branch " + repo.head.getBranch().getName() );
+        }
+
         Map<String, STATUS> statuses = repo.getFilesStatuses();
 
 
@@ -52,7 +59,6 @@ public class CmdStatus implements GitCommand {
         for (String relativeName : changesToBeCommited.get(INDEX_HEAD_STATUS.DELETED)) {
             System.out.println("\t\t" + relativeName);
         }
-
 
 
         // unstaged changes

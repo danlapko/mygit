@@ -86,10 +86,9 @@ public class Commit extends GitObject implements GitGettable {
         return parents;
     }
 
-    private boolean visited = false;
 
-    public void logVisit(Deque<String> reps, String fromRevision, boolean readyToLog) {
-        if (visited) {
+    public void logVisit(Deque<String> reps, String fromRevision, boolean readyToLog, Set<String> visitedShas) {
+        if (visitedShas.contains(sha)) {
             return;
         }
 
@@ -100,19 +99,18 @@ public class Commit extends GitObject implements GitGettable {
         if (!readyToLog && sha.equals(fromRevision)) {
             readyToLog = true;
         }
+
         if (readyToLog) {
             reps.push(s);
         }
 
-        visited = true;
+        visitedShas.add(sha);
 
-        if (parents == null) {
-            return;
-        } else {
-            for (Commit parent : parents) {
-                parent.logVisit(reps, fromRevision, readyToLog);
-            }
+
+        for (Commit parent : parents) {
+            parent.logVisit(reps, fromRevision, readyToLog, visitedShas);
         }
+
     }
 
     public boolean checkRevisionIsAncestor(String revisionSha) {

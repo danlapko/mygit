@@ -21,7 +21,8 @@ public class MyGit {
                         CmdLog.class,
                         CmdReset.class,
                         CmdCheckout.class,
-                        CmdBranch.class
+                        CmdBranch.class,
+                        CmdMerge.class
                 );
         Cli<GitCommand> parser = builder.build();
 
