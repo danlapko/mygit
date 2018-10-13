@@ -2,6 +2,7 @@ package repo;
 
 // status: contentSha =? indexSha
 
+import exceptions.InvalidWorkdirIndexStatusException;
 import repo.objects.Blob;
 
 import java.util.Map;
@@ -34,7 +35,7 @@ public enum WORKDIR_INDEX_STATUS {
             workdirIndexStatus = WORKDIR_INDEX_STATUS.DELETED;
 
         } else {
-            throw new Exception("impossible WORKDIR_INDEX_STATUS");
+            throw new InvalidWorkdirIndexStatusException(relativeFileName);
         }
         return workdirIndexStatus;
     }

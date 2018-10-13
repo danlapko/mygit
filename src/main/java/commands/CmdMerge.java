@@ -1,5 +1,7 @@
 package commands;
 
+import exceptions.BranchNotExistsException;
+import exceptions.MyGitException;
 import io.airlift.airline.Arguments;
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
@@ -28,9 +30,9 @@ public class CmdMerge implements GitCommand {
     @Override
     public int execute(Repo repo, Path workingDir) throws Exception {
         if (!repo.branches.containsKey(branchName)) {
-            throw new Exception("There is no such branch " + branchName);
+            throw new BranchNotExistsException(branchName);
         } else if (!repo.head.detached() && repo.head.getBranch().getName().equals(branchName)) {
-            throw new Exception("You are already on " + branchName);
+            throw new MyGitException("You are already on " + branchName);
         }
 
         Map<String, Blob> currentBlobs = repo.head.getAll();

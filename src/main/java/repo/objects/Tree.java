@@ -1,5 +1,8 @@
 package repo.objects;
 
+import exceptions.InvalidTreeObjectStructureException;
+import exceptions.MyGitException;
+import exceptions.TreeNotExistsException;
 import org.apache.commons.codec.digest.DigestUtils;
 import repo.GitGettable;
 import repo.GitSettable;
@@ -22,7 +25,7 @@ public class Tree extends GitObject implements GitGettable, GitSettable {
     private final Map<String, Tree> trees; // relativeFileName -> Tree
 
     // create from existing tree from objects dir
-    public Tree(Repo repo, String objectSha) throws IOException {
+    public Tree(Repo repo, String objectSha) throws IOException, MyGitException {
         super(repo, objectSha);
 
         // reconstruct from object file
@@ -30,7 +33,7 @@ public class Tree extends GitObject implements GitGettable, GitSettable {
         trees = new HashMap<>();
         Path treeObjectPath = repo.objectsDir.resolve(objectSha);
         if (!Files.exists(treeObjectPath)) {
-            throw new IOException(" Tree object does not exists " + treeObjectPath.toString());
+            throw new TreeNotExistsException(objectSha);
         }
 
 
@@ -49,7 +52,7 @@ public class Tree extends GitObject implements GitGettable, GitSettable {
                     trees.put(lineRelativeFileName, new Tree(repo, lineSha));
                     break;
                 default:
-                    throw new IOException("invalid tree object structure " + treeObjectPath.toString());
+                    throw new InvalidTreeObjectStructureException(objectSha);
             }
 
         }

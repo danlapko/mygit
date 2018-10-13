@@ -2,6 +2,7 @@ package repo;
 
 // status: indexSha =? headSha
 
+import exceptions.InvalidIndexHeadStatusException;
 import repo.objects.Blob;
 
 import java.util.Map;
@@ -38,7 +39,7 @@ public enum INDEX_HEAD_STATUS {
             indexHeadStatus = INDEX_HEAD_STATUS.DELETED;
 
         } else {
-            throw new Exception("impossible INDEX_HEAD_STATUS");
+            throw new InvalidIndexHeadStatusException(relativeFileName);
         }
 
         return indexHeadStatus;

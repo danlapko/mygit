@@ -1,5 +1,6 @@
 package commands;
 
+import exceptions.CommandArgumentsException;
 import io.airlift.airline.Arguments;
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
@@ -32,9 +33,9 @@ public class CmdCheckout implements GitCommand {
         List<Path> absoluteFilePaths = Utils.dirtyFileNamesToPaths(repo, dirtyFileNames);
 
         if (pointer.equals("") && absoluteFilePaths.size() == 0) {
-            throw new Exception("should be given either pointer or -- with file names");
+            throw new CommandArgumentsException("should be given either pointer or -- with file names");
         } else if (!pointer.equals("") && !(absoluteFilePaths.size() == 0)) {
-            throw new Exception("should be given either pointer or -- with file names, not both");
+            throw new CommandArgumentsException("should be given either pointer or -- with file names, not both");
         }
 
         if (!pointer.equals("")) {

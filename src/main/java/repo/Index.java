@@ -1,5 +1,6 @@
 package repo;
 
+import exceptions.MyGitException;
 import org.apache.commons.codec.digest.DigestUtils;
 import repo.objects.Blob;
 import repo.objects.Tree;
@@ -15,7 +16,7 @@ public class Index implements GitGettable, GitSettable {
     private final Tree tree;
 
     //  load Index from file "index" on any other command
-    Index(Repo repo) throws IOException {
+    Index(Repo repo) throws IOException, MyGitException {
         this.repo = repo;
 
         String treeSha = Utils.readFileContent(repo.indexPath);

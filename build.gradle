@@ -23,5 +23,6 @@ dependencies {
     compile group: 'io.airlift', name: 'airline', version: '0.7'
     compile group: 'commons-io', name: 'commons-io', version: '2.5'
     compile group: 'commons-codec', name: 'commons-codec', version: '1.9'
+    compile 'com.intellij:annotations:+@jar'
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }

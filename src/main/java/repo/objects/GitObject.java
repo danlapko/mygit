@@ -2,6 +2,7 @@ package repo.objects;
 
 import repo.Repo;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,13 +18,13 @@ abstract class GitObject {
     }
 
     //  create from existing object in objects dir
-    GitObject(Repo repo, String objectSha) throws IOException {
+    GitObject(Repo repo, String objectSha) throws FileNotFoundException {
         this.repo = repo;
         this.sha = objectSha;
 
         Path objectPath = repo.objectsDir.resolve(objectSha);
         if (!Files.exists(objectPath)) {
-            throw new IOException();
+            throw new FileNotFoundException();
         }
     }
 

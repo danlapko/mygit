@@ -1,5 +1,7 @@
 package repo;
 
+import exceptions.BranchNotExistsException;
+import exceptions.MyGitException;
 import repo.objects.Blob;
 import repo.objects.Commit;
 
@@ -18,7 +20,7 @@ public class Branch implements GitGettable {
     private Commit commit;
 
     //  load branch from file
-    public Branch(Repo repo, String branchName) throws IOException {
+    public Branch(Repo repo, String branchName) throws IOException, MyGitException {
         this.repo = repo;
         this.name = branchName;
 
@@ -27,7 +29,7 @@ public class Branch implements GitGettable {
             String commitSha = Utils.readFileContentList(absoluteBranchFilePath).get(0);
             commit = new Commit(repo, commitSha);
         } else {
-            throw new IOException("branch " + branchName + " does not exist!");
+            throw new BranchNotExistsException(branchName);
         }
     }
 

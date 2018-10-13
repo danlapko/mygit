@@ -1,5 +1,8 @@
 package commands;
 
+import exceptions.BranchAlreadyExistsException;
+import exceptions.BranchNotExistsException;
+import exceptions.CommandStateException;
 import io.airlift.airline.Arguments;
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
@@ -21,9 +24,9 @@ public class CmdBranch implements GitCommand {
     @Override
     public int execute(Repo repo, Path workingDir) throws Exception {
         if (repo.branches.containsKey(branchName) && !deleting) {
-            throw new Exception("branch " + branchName + " already exists!");
+            throw new BranchAlreadyExistsException(branchName);
         } else if (!repo.branches.containsKey(branchName) && deleting) {
-            throw new Exception("there is no such branch: " + branchName);
+            throw new BranchNotExistsException(branchName);
         }
 
         if (!deleting) {
@@ -31,7 +34,7 @@ public class CmdBranch implements GitCommand {
             repo.branches.put(branchName, newBranch);
         } else {
             if (repo.head.getBranch() != null && repo.head.getBranch().getName().equals(branchName)) {
-                throw new Exception("HEAD currently on " + branchName + ". You can't delete it.");
+                throw new CommandStateException("HEAD currently on " + branchName + ". You can't delete it.");
             }
             repo.branches.remove(branchName);
             Path pathToRemove = repo.branchesDir.resolve(branchName);

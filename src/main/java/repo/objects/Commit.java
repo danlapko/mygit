@@ -1,5 +1,7 @@
 package repo.objects;
 
+import exceptions.CommitNotExistsException;
+import exceptions.MyGitException;
 import org.apache.commons.codec.digest.DigestUtils;
 import repo.GitGettable;
 import repo.Repo;
@@ -22,12 +24,12 @@ public class Commit extends GitObject implements GitGettable {
     private final String message;
 
     //  create from existing Commit from objects dir
-    public Commit(Repo repo, String commitSha) throws IOException {
+    public Commit(Repo repo, String commitSha) throws IOException, MyGitException {
         super(repo, commitSha);
 
         Path commitObjectPath = repo.objectsDir.resolve(commitSha);
         if (!Files.exists(commitObjectPath)) {
-            throw new IOException(" Commit object does not exists " + commitObjectPath.toString());
+            throw new CommitNotExistsException(commitObjectPath.toString());
 
         }
         List<String> lines = Utils.readFileContentList(commitObjectPath);

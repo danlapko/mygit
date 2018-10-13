@@ -1,5 +1,8 @@
 package repo.objects;
 
+import exceptions.BlobNotExistsException;
+import exceptions.InvalidBlobStateException;
+import exceptions.MyGitException;
 import org.apache.commons.codec.digest.DigestUtils;
 import repo.Repo;
 import repo.Utils;
@@ -16,17 +19,17 @@ public class Blob extends GitObject {
     private final String content;
 
     // create from existing object
-    public Blob(Repo repo, String objectSha) throws IOException {
+    public Blob(Repo repo, String objectSha) throws IOException, MyGitException {
         super(repo, objectSha);
 
         Path blobObjectPath = repo.objectsDir.resolve(objectSha);
         if (!Files.exists(blobObjectPath)) {
-            throw new IOException(" Blob object does not exists " + blobObjectPath.toString());
+            throw new BlobNotExistsException(blobObjectPath.toString());
         }
         content = Utils.readFileContent(blobObjectPath);
         String contentSha = DigestUtils.sha256Hex(content);
         if (!contentSha.equals(objectSha)) {
-            throw new IOException(" Blob content sha != Blob object name. Blob: " + objectSha + ", contentSha: " + contentSha);
+            throw new InvalidBlobStateException(objectSha, content);
         }
     }
 

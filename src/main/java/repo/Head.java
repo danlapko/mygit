@@ -1,5 +1,6 @@
 package repo;
 
+import exceptions.IncorrectHeadStateException;
 import repo.objects.Blob;
 import repo.objects.Commit;
 
@@ -74,7 +75,7 @@ public class Head implements GitGettable {
         } else if (pointer instanceof Commit) {
             return true;
         } else {
-            throw new Exception("incorrect head state");
+            throw new IncorrectHeadStateException(pointer);
         }
     }
 

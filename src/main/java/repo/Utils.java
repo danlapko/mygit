@@ -1,5 +1,10 @@
 package repo;
 
+import exceptions.FileNotExists;
+import exceptions.FileOutOfTrackingDirException;
+import exceptions.MyGitException;
+
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,7 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Utils {
-    public static List<Path> dirtyFileNamesToPaths(Repo repo, List<String> dirtyFileNames) throws IOException {
+    public static List<Path> dirtyFileNamesToPaths(Repo repo, List<String> dirtyFileNames) throws IOException, MyGitException {
         List<Path> absoluteFilePaths = new LinkedList<>();
         if (dirtyFileNames == null)
             return absoluteFilePaths;
@@ -20,7 +25,7 @@ public class Utils {
 
 
             if (filePath.isAbsolute() && !filePath.startsWith(repo.repoDir)) {
-                throw new IOException("file could not be tracked (out of repo) " + filePath.toString());
+                throw new FileOutOfTrackingDirException(repo, filePath.toString());
             }
 
             if (filePath.isAbsolute()) {
@@ -30,7 +35,7 @@ public class Utils {
             }
 
             if (!Files.exists(absoluteFilePath)) {
-                throw new IOException("file does not exists " + filePath.toString());
+                throw new FileNotExists(filePath.toString());
             }
 
             if (Files.isDirectory(absoluteFilePath)) {

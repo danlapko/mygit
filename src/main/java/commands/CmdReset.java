@@ -1,5 +1,7 @@
 package commands;
 
+import exceptions.CommandStateException;
+import exceptions.MyGitException;
 import io.airlift.airline.Arguments;
 import io.airlift.airline.Command;
 import repo.*;
@@ -20,10 +22,10 @@ public class CmdReset implements GitCommand {
     @Override
     public int execute(Repo repo, Path workingDir) throws Exception {
         if (repo.head.detached()) {
-            throw new Exception("FORBIDDEN to reset in detached state");
+            throw new CommandStateException("FORBIDDEN to reset in detached state");
         }
         if (!repo.head.getCommit().checkRevisionIsAncestor(revisionSha)) {
-            throw new Exception("There is no such revision in head ancestors");
+            throw new MyGitException("There is no such commit " + revisionSha + " in head ancestors ");
         }
 
         // Map<String, INDEX_HEAD_STATUS> indexHeadStatuses = repo.index.getIndexHeadStatuses();
