@@ -30,11 +30,11 @@ public class CmdCheckout implements GitCommand {
     @Override
     public int execute(Repo repo, Path workingDir) throws Exception {
         //      check and normalize dirty file names
-        List<Path> absoluteFilePaths = Utils.dirtyFileNamesToPaths(repo, dirtyFileNames);
+        List<Path> relativePaths = Utils.dirtyFileNamesToPathsInTree(repo, dirtyFileNames, repo.index.getTree());
 
-        if (pointer.equals("") && absoluteFilePaths.size() == 0) {
+        if (pointer.equals("") && relativePaths.size() == 0) {
             throw new CommandArgumentsException("should be given either pointer or -- with file names");
-        } else if (!pointer.equals("") && !(absoluteFilePaths.size() == 0)) {
+        } else if (!pointer.equals("") && !(relativePaths.size() == 0)) {
             throw new CommandArgumentsException("should be given either pointer or -- with file names, not both");
         }
 
@@ -46,10 +46,9 @@ public class CmdCheckout implements GitCommand {
             }
 
         } else {      // if `--` provided overwrites files in working dir by files from index
-            for (Path absolutePath : absoluteFilePaths) {
-                Path relativePath = repo.trackingDir.relativize(absolutePath);
-                Blob blob = repo.index.get(relativePath);
-                Utils.writeContent(absolutePath, blob.repr());
+            for (Path relativePath : relativePaths) {
+                Blob blob = (Blob) repo.index.get(relativePath);
+                Utils.writeContent(repo.trackingDir.resolve(relativePath), blob.repr());
             }
 
         }

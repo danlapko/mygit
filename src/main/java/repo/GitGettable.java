@@ -1,12 +1,13 @@
 package repo;
 
 import repo.objects.Blob;
+import repo.objects.GitObject;
 
 import java.nio.file.Path;
 import java.util.Map;
 
 public interface GitGettable {
-    Blob get(Path relativeFilePath);
+    GitObject get(Path relativeFilePath);
 
     /**
      * @return relativeFileName -> blob

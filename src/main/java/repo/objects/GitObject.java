@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-abstract class GitObject {
+public abstract class GitObject {
     final Repo repo;
     public String sha;
 
@@ -24,7 +24,7 @@ abstract class GitObject {
 
         Path objectPath = repo.objectsDir.resolve(objectSha);
         if (!Files.exists(objectPath)) {
-            throw new FileNotFoundException();
+            throw new FileNotFoundException(objectPath.toString());
         }
     }
 

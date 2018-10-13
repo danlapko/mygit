@@ -3,6 +3,8 @@ package repo;
 import exceptions.FileNotExists;
 import exceptions.FileOutOfTrackingDirException;
 import exceptions.MyGitException;
+import exceptions.TreeNotContainsPathException;
+import repo.objects.Tree;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -15,7 +17,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class Utils {
-    public static List<Path> dirtyFileNamesToPaths(Repo repo, List<String> dirtyFileNames) throws IOException, MyGitException {
+    public static List<Path> dirtyFileNamesToPathsInWorkDir(Repo repo, List<String> dirtyFileNames) throws IOException, MyGitException {
         List<Path> absoluteFilePaths = new LinkedList<>();
         if (dirtyFileNames == null)
             return absoluteFilePaths;
@@ -55,6 +57,39 @@ public class Utils {
         return absoluteFilePaths;
     }
 
+    public static List<Path> dirtyFileNamesToPathsInTree(Repo repo, List<String> dirtyFileNames, Tree tree) throws IOException, MyGitException {
+        List<Path> relativeFilePaths = new LinkedList<>();
+        if (dirtyFileNames == null)
+            return relativeFilePaths;
+        for (String fileName : dirtyFileNames) {
+            Path relativeFilePath = Paths.get(fileName);
+
+            if (relativeFilePath.isAbsolute()) {
+                throw new MyGitException("The path " + relativeFilePath.toString() + " must be relative to working dir.");
+            }
+
+
+            if (!tree.contains(relativeFilePath)) {
+                throw new TreeNotContainsPathException(tree, relativeFilePath.toString());
+            }
+
+            if (tree.get(relativeFilePath) instanceof Tree) {
+                relativeFilePaths.addAll(
+                        ((Tree) tree.get(relativeFilePath)).
+                                getAll().
+                                keySet().
+                                stream().
+                                map(name -> relativeFilePath.resolve(name)).
+                                collect(Collectors.toSet())
+                );
+            } else {
+                relativeFilePaths.add(relativeFilePath);
+            }
+        }
+
+        return relativeFilePaths;
+    }
+
     public static String readFileContent(Path absolutePath) throws IOException {
         List<String> lines;
         String content;
@@ -84,10 +119,18 @@ public class Utils {
     }
 
     public static void writeContent(Path absolutePath, String content) throws IOException {
+        Path parent = absolutePath.getParent();
+        if (!Files.exists(parent)) {
+            Files.createDirectories(parent);
+        }
         Files.write(absolutePath, Arrays.asList(content.split("\n")));
     }
 
     public static void writeContent(Path absolutePath, List<String> list) throws IOException {
+        Path parent = absolutePath.getParent();
+        if (!Files.exists(parent)) {
+            Files.createDirectories(parent);
+        }
         Files.write(absolutePath, list);
     }
 }

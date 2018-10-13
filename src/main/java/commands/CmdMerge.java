@@ -104,6 +104,8 @@ public class CmdMerge implements GitCommand {
         // checkout to current head
         CmdCheckout.checkoutToCommit(repo, newCommit.sha);
 
+        System.out.println(newCommit.sha);
+
         return 0;
     }
 }

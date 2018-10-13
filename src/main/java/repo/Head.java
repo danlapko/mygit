@@ -3,6 +3,7 @@ package repo;
 import exceptions.IncorrectHeadStateException;
 import repo.objects.Blob;
 import repo.objects.Commit;
+import repo.objects.GitObject;
 
 import java.nio.file.Path;
 import java.util.LinkedList;
@@ -80,7 +81,7 @@ public class Head implements GitGettable {
     }
 
     @Override
-    public Blob get(Path relativeFilePath) {
+    public GitObject get(Path relativeFilePath) {
         return pointer.get(relativeFilePath);
     }
 

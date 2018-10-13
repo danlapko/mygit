@@ -70,7 +70,7 @@ public class Tree extends GitObject implements GitGettable, GitSettable {
     }
 
     @Override
-    public Blob get(Path relativeFilePath) {
+    public GitObject get(Path relativeFilePath) {
         Deque<String> nameSegments = convertRelativePathToSegments(relativeFilePath);
         return get(nameSegments);
     }
@@ -181,10 +181,13 @@ public class Tree extends GitObject implements GitGettable, GitSettable {
 
 //    ================= private ================
 
-    private Blob get(Deque<String> nameSegments) {
+    private GitObject get(Deque<String> nameSegments) {
         String nextSegment = nameSegments.pop();
         if (nameSegments.size() == 0) {
-            return blobs.getOrDefault(nextSegment, null);
+            GitObject result = blobs.getOrDefault(nextSegment, null);
+            if (result == null)
+                result = trees.getOrDefault(nextSegment, null);
+            return result;
         } else {
             if (!trees.containsKey(nextSegment)) return null;
             else return trees.get(nextSegment).get(nameSegments);

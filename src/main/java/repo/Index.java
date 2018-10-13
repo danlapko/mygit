@@ -3,6 +3,7 @@ package repo;
 import exceptions.MyGitException;
 import org.apache.commons.codec.digest.DigestUtils;
 import repo.objects.Blob;
+import repo.objects.GitObject;
 import repo.objects.Tree;
 
 import java.io.IOException;
@@ -53,7 +54,7 @@ public class Index implements GitGettable, GitSettable {
     }
 
     @Override
-    public Blob get(Path relativeFilePath) {
+    public GitObject get(Path relativeFilePath) {
         return tree.get(relativeFilePath);
     }
 

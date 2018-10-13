@@ -146,7 +146,7 @@ public class Commit extends GitObject implements GitGettable {
 
 
     @Override
-    public Blob get(Path relativeFilePath) {
+    public GitObject get(Path relativeFilePath) {
         return tree.get(relativeFilePath);
     }
 

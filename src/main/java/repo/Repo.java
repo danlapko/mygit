@@ -3,6 +3,7 @@ package repo;
 import org.apache.commons.codec.digest.DigestUtils;
 import repo.objects.Blob;
 import repo.objects.Commit;
+import repo.objects.GitObject;
 import repo.objects.Tree;
 
 import java.io.File;

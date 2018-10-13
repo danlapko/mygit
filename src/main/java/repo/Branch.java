@@ -4,6 +4,7 @@ import exceptions.BranchNotExistsException;
 import exceptions.MyGitException;
 import repo.objects.Blob;
 import repo.objects.Commit;
+import repo.objects.GitObject;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -57,7 +58,7 @@ public class Branch implements GitGettable {
 
 
     @Override
-    public Blob get(Path relativeFilePath) {
+    public GitObject get(Path relativeFilePath) {
         return commit.get(relativeFilePath);
     }
 

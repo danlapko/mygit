@@ -34,6 +34,7 @@ public class CmdCommit implements GitCommand {
             Branch branch = repo.head.getBranch();
             branch.moveToCommit(commit.sha);
         }
+        System.out.println(commit.sha);
         return 0;
     }
 }
