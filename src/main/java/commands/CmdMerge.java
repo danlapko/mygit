@@ -6,6 +6,7 @@ import io.airlift.airline.Arguments;
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
 import repo.Branch;
+import repo.Index;
 import repo.Repo;
 import repo.Utils;
 import repo.objects.Blob;
@@ -101,8 +102,9 @@ public class CmdMerge implements GitCommand {
             branch.moveToCommit(newCommit.sha);
         }
 
-        // checkout to current head
-        CmdCheckout.checkoutToCommit(repo, newCommit.sha);
+        // reset repo.index
+        // CmdCheckout.checkoutToCommit(repo, newCommit.sha);
+        repo.index = new Index(repo, newCommit.getTree());
 
         System.out.println(newCommit.sha);
 
