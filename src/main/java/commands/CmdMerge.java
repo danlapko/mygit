@@ -103,7 +103,6 @@ public class CmdMerge implements GitCommand {
         }
 
         // reset repo.index
-        // CmdCheckout.checkoutToCommit(repo, newCommit.sha);
         repo.index = new Index(repo, newCommit.getTree());
 
         System.out.println(newCommit.sha);

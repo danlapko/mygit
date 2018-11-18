@@ -53,8 +53,6 @@ public class CmdCheckout implements GitCommand {
 
         }
 
-
-        // Map<String, INDEX_HEAD_STATUS> indexHeadStatuses = repo.index.getIndexHeadStatuses();
         return 0;
     }
 

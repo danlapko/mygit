@@ -110,14 +110,3 @@ public class Index implements GitGettable, GitSettable {
     }
 
 }
-
-
-//    //    relativeFileName -> Blob
-//    public SortedMap<String, Blob> getRecords() {
-//        return records;
-//    }
-//
-//    //   relativeFileNames
-//    public Set<String> getIndexedFileNames() {
-//        return records.keySet();
-//    }

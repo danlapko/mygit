@@ -1,10 +1,7 @@
 package repo;
 
-import repo.objects.Blob;
-
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.Set;
 
 public interface GitSettable {
